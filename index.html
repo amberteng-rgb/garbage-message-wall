@@ -235,16 +235,21 @@
                 })
                 .then(data => {
                     hideStatus();
+
+                    // 觀察後端實際回傳格式（需要時可以打開）
+                    // console.log("Data from server:", data);
                     
-                    // V5.6 修正：確保 ID 被解析為數字後再進行比較
+                    // ✅ 計算目前資料中最高的 row_index（以數字比較）
                     if (data && data.length > 0) {
-                        // 篩選出所有有效的 row_index，並強制轉換為數字
-                        const validIds = data.map(item => Number(item.row_index)).filter(id => !isNaN(id) && id > 0);
-                        
+                        const validIds = data
+                            .map(item => Number(item.row_index))
+                            .filter(id => Number.isFinite(id));  // 只保留有效數字
+
                         if (validIds.length > 0) {
-                             // 找出最大的數字 ID
-                             const currentMaxId = Math.max(...validIds);
-                             highestRowIndex = currentMaxId;
+                            highestRowIndex = Math.max(...validIds);
+                            // console.log("最高 row_index =", highestRowIndex);
+                        } else {
+                            console.warn("找不到有效的 row_index，請檢查後端回傳格式");
                         }
                     }
 
@@ -305,18 +310,20 @@
                 
                 const span = document.createElement('span');
                 
-                // V5.7: 只設定基本類別，將顏色邏輯留給 classList
+                // 先設定基本類別，顏色邏輯由 is-latest 控制
                 span.className = 'marquee-item';
-                
                 span.innerText = item.text; 
                 
-                // V5.6 修正：確保 item.row_index 被轉換成數字後再與 highestRowIndex 比較
+                // 將 row_index 轉成數字後比較
                 const itemRowIndexNumber = Number(item.row_index);
-                const isLatest = (itemRowIndexNumber && itemRowIndexNumber === highestRowIndex);
-                
-                // V5.7 顏色邏輯：如果是最新的，則添加 is-latest 類別
+                const isLatest =
+                    Number.isFinite(itemRowIndexNumber) &&
+                    itemRowIndexNumber === highestRowIndex;
+
+                // 假如是最新那筆留言 → 加上綠色 class
                 if (isLatest) {
                     span.classList.add('is-latest');
+                    // console.log("標記為最新留言：", item.text, "row_index =", itemRowIndexNumber);
                 }
                 
                 const trackIndex = index % TRACK_COUNT; 
