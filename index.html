@@ -98,7 +98,7 @@
             color: #444444; /* 預設灰色 */
         }
         
-        /* V5.7: 新增強制綠色類別 */
+        /* 強制綠色類別（最新一筆） */
         .is-latest {
             color: var(--primary-green) !important; /* 使用 !important 強制覆蓋 */
         }
@@ -119,8 +119,6 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
-        /* Footer (已移除) */
-        
         /* RWD 強制設定 */
         @media (max-width: 768px) { 
             #mobile-input-view { display: block !important; } 
@@ -172,6 +170,7 @@
             </div>
         </div>
     </div>
+
     <script>
         // ✅ 您的 Google Apps Script 網址
         const scriptURL = "https://script.google.com/macros/s/AKfycbwYvDeDEBDKuoJQymeWb8kNyByK2vlo2ojdXzDb2d6roQyYTYpZK3l5flIJHURutqsxpQ/exec"; 
@@ -179,10 +178,10 @@
         const TRACK_COUNT = 4;
         let currentMessagesHash = ""; 
         
-        // V5.5 新增：儲存目前最高 ID 的留言，用於判斷誰應該是綠色
-        let highestRowIndex = 0;
+        // 記住「目前最新那筆的 row_index」（字串形式）
+        let latestRowIndex = null;
         
-        // V5.3 新增：用於判斷是否為首次載入 
+        // 用於判斷是否為首次載入 
         let isInitialLoad = true;
 
         // 顯示狀態訊息的輔助函式
@@ -236,21 +235,21 @@
                 .then(data => {
                     hideStatus();
 
-                    // 觀察後端實際回傳格式（需要時可以打開）
                     // console.log("Data from server:", data);
-                    
-                    // ✅ 計算目前資料中最高的 row_index（以數字比較）
-                    if (data && data.length > 0) {
-                        const validIds = data
-                            .map(item => Number(item.row_index))
-                            .filter(id => Number.isFinite(id));  // 只保留有效數字
 
-                        if (validIds.length > 0) {
-                            highestRowIndex = Math.max(...validIds);
-                            // console.log("最高 row_index =", highestRowIndex);
+                    // ✅ 定義「最新那筆」＝陣列中最後一個元素
+                    if (data && data.length > 0) {
+                        const lastItem = data[data.length - 1];
+
+                        if (lastItem && typeof lastItem.row_index !== "undefined") {
+                            // 統一用字串來比較，避免型別不一致
+                            latestRowIndex = String(lastItem.row_index);
                         } else {
-                            console.warn("找不到有效的 row_index，請檢查後端回傳格式");
+                            // 後端沒有 row_index，改用「位置」來判斷（reversedData[0]）
+                            latestRowIndex = null;
                         }
+                    } else {
+                        latestRowIndex = null;
                     }
 
                     const newHash = JSON.stringify(data);
@@ -260,7 +259,6 @@
                         renderMarquee(data);
                     }
                     
-                    // 標記為已非首次載入
                     isInitialLoad = false;
                 })
                 .catch(error => {
@@ -309,21 +307,28 @@
                 if (!item.text) return; 
                 
                 const span = document.createElement('span');
-                
-                // 先設定基本類別，顏色邏輯由 is-latest 控制
                 span.className = 'marquee-item';
                 span.innerText = item.text; 
                 
-                // 將 row_index 轉成數字後比較
-                const itemRowIndexNumber = Number(item.row_index);
-                const isLatest =
-                    Number.isFinite(itemRowIndexNumber) &&
-                    itemRowIndexNumber === highestRowIndex;
+                // 統一把 row_index 轉成字串來比較
+                const itemRowIndex =
+                    typeof item.row_index === "undefined" || item.row_index === null
+                        ? null
+                        : String(item.row_index);
 
-                // 假如是最新那筆留言 → 加上綠色 class
-                if (isLatest) {
+                // 情況 A：後端有 row_index → 用 row_index 比較
+                const isLatestByRowIndex =
+                    latestRowIndex !== null &&
+                    itemRowIndex !== null &&
+                    itemRowIndex === latestRowIndex;
+
+                // 情況 B：後端沒有 row_index → 用 reversedData[0] 當最新
+                const isLatestByPosition =
+                    latestRowIndex === null && index === 0;
+
+                if (isLatestByRowIndex || isLatestByPosition) {
                     span.classList.add('is-latest');
-                    // console.log("標記為最新留言：", item.text, "row_index =", itemRowIndexNumber);
+                    // console.log("標記最新留言：", item.text, "row_index =", item.row_index);
                 }
                 
                 const trackIndex = index % TRACK_COUNT; 
