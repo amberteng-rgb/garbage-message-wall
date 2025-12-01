@@ -188,4 +188,131 @@
         }
         function hideStatus() {
             const overlay = document.getElementById('status-overlay');
-            if (overlay)
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        // --- 手機端 ---
+        function submitMessage() {
+            const input = document.getElementById('userInput');
+            const btn = document.getElementById('submitBtn');
+            const text = input.value.trim();
+            if (!text) { alert("請輸入內容！"); return; }
+            btn.disabled = true;
+            btn.innerText = "傳送中...";
+            fetch(`${scriptURL}?action=insert&text=${encodeURIComponent(text)}`)
+                .then(() => {
+                    alert("感謝您的響應！訊息已上牆。");
+                    input.value = "";
+                    btn.disabled = false;
+                    btn.innerText = "送出行動";
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("發送失敗，請檢查網路。");
+                    btn.disabled = false;
+                    btn.innerText = "重試";
+                });
+        }
+
+        // --- 牆面端 ---
+        function updateWall() {
+            if (!currentMessagesHash) {
+                showStatus("正在讀取資料...請稍候");
+            }
+
+            fetch(`${scriptURL}?action=read`)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    hideStatus();
+                    const newHash = JSON.stringify(data);
+                    if (newHash !== currentMessagesHash) {
+                        currentMessagesHash = newHash;
+                        renderMarquee(data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch Error:', error);
+                    showStatus("⚠️ 讀取失敗！請檢查 Apps Script 權限或網址", true);
+                });
+        }
+
+        function renderMarquee(data) {
+            const wallContainer = document.getElementById('wallContainer');
+            
+            // 自動修復：如果軌道不見了，重新建立
+            if (wallContainer.querySelectorAll('.marquee-track').length < TRACK_COUNT) {
+                wallContainer.innerHTML = '';
+                for (let i = 0; i < TRACK_COUNT; i++) {
+                    const track = document.createElement('div');
+                    track.className = 'marquee-track';
+                    track.id = `track-${i}`;
+                    wallContainer.appendChild(track);
+                }
+            }
+
+            const tracks = [];
+            for (let i = 0; i < TRACK_COUNT; i++) {
+                tracks.push(document.getElementById(`track-${i}`));
+            }
+
+            // 檢查資料
+            if (!data || data.length === 0 || data.every(item => !item.text)) {
+                showStatus("❌ 目前沒有留言資料，請從手機端輸入內容", true);
+                // 必須清除跑馬燈內容
+                tracks.forEach(track => track.innerHTML = '');
+                return;
+            }
+
+            // 清空舊內容
+            tracks.forEach(track => track.innerHTML = '');
+
+            // 準備內容
+            const contentBlocks = tracks.map(() => document.createElement('div'));
+            contentBlocks.forEach(block => block.className = 'marquee-content');
+            
+            const reversedData = [...data].reverse();
+            
+            reversedData.forEach((item, index) => {
+                if (!item.text) return; 
+                
+                const span = document.createElement('span');
+                span.className = 'marquee-item';
+                
+                // 1. 拿掉星星符號
+                span.innerText = item.text; 
+                
+                // 3. 統一回覆字體用色
+                span.style.color = '#444444'; // 統一使用深灰色
+                
+                // 4. 統一回覆字體大小
+                span.style.fontSize = '2.2rem'; // 統一使用 2.2rem
+                
+                const trackIndex = index % TRACK_COUNT; 
+                contentBlocks[trackIndex].appendChild(span);
+            });
+
+            // 填入軌道並複製以循環
+            tracks.forEach((track, i) => {
+                const content = contentBlocks[i];
+                if (content.innerHTML) {
+                    content.innerHTML += content.innerHTML; // x2
+                    content.innerHTML += content.innerHTML; // x4 (確保夠長)
+                }
+                track.appendChild(content);
+            });
+        }
+
+        // 啟動邏輯
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.innerWidth > 768) {
+                updateWall();
+                // 靜默更新，避免重刷畫面導致跑馬燈跳動
+                setInterval(updateWall, 3000); 
+            }
+        });
+    </script>
+</body>
+</html>
