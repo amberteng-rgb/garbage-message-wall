@@ -49,35 +49,32 @@
         /* --- 跑馬燈核心樣式 --- */
         .message-wall {
             width: 100%; 
-            height: 60vh; /* 拉高高度 */
+            height: 60vh;
             overflow: hidden; 
             position: absolute; 
             top: 25%; 
             display: flex;
             flex-direction: column; 
-            justify-content: space-evenly; /* 平均分配 */
+            justify-content: space-evenly;
         }
         
-        /* 單獨的跑馬燈軌道 */
         .marquee-track {
             width: 100%;
             display: flex; 
             align-items: center;
-            height: 15%; /* 每一軌的高度 */
+            height: 15%;
             position: relative;
         }
 
-        /* 跑馬燈內容 */
         .marquee-content {
             display: flex;
             white-space: nowrap; 
             animation-duration: 60s; 
             animation-timing-function: linear;
             animation-iteration-count: infinite;
-            position: absolute; /* 絕對定位確保不被擠壓 */
+            position: absolute;
         }
         
-        /* 不同的軌道給予不同的動畫時間 */
         #track-0 .marquee-content { animation-name: marquee-0; animation-duration: 75s; }
         #track-1 .marquee-content { animation-name: marquee-1; animation-duration: 60s; }
         #track-2 .marquee-content { animation-name: marquee-2; animation-duration: 90s; }
@@ -88,22 +85,20 @@
         @keyframes marquee-2 { 0% { left: 100%; transform: translateX(0); } 100% { left: 0%; transform: translateX(-100%); } }
         @keyframes marquee-3 { 0% { left: 100%; transform: translateX(0); } 100% { left: 0%; transform: translateX(-100%); } }
 
-        /* 跑馬燈單一項目 (間距縮小) */
         .marquee-item {
             display: inline-block;
             padding: 0 15px; 
             font-weight: 900;
             line-height: 1.2;
-            font-size: 2.2rem; /* 固定字體大小 */
-            color: #444444; /* 預設灰色 */
+            font-size: 2.2rem;
+            color: #444444;
         }
         
-        /* 強制綠色類別（最新一筆） */
+        /* 最新留言的綠色 */
         .is-latest {
-            color: var(--primary-green) !important; /* 使用 !important 強制覆蓋 */
+            color: var(--primary-green) !important;
         }
 
-        /* 狀態訊息浮層 (Loading / Error) */
         #status-overlay {
             position: absolute;
             top: 50%; left: 50%;
@@ -114,12 +109,11 @@
             padding: 20px 40px;
             border-radius: 10px;
             z-index: 100;
-            display: none; /* 預設隱藏 */
+            display: none;
             text-align: center;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
-
-        /* RWD 強制設定 */
+        
         @media (max-width: 768px) { 
             #mobile-input-view { display: block !important; } 
             #desktop-wall-view { display: none !important; }
@@ -137,6 +131,7 @@
     <div class="gold-curve curve-2"></div>
 
     <div class="container">
+        <!-- 手機輸入端 -->
         <div id="mobile-input-view">
             <div class="header-logo">
                 <h1>垃圾減量大作戰！</h1> 
@@ -152,6 +147,7 @@
             </div>
         </div>
 
+        <!-- 牆面顯示端 -->
         <div id="desktop-wall-view">
             <div class="header-logo">
                 <h1>垃圾減量大作戰！</h1>
@@ -172,33 +168,28 @@
     </div>
 
     <script>
-        // ✅ 您的 Google Apps Script 網址
+        // ✅ Apps Script 網址
         const scriptURL = "https://script.google.com/macros/s/AKfycbwYvDeDEBDKuoJQymeWb8kNyByK2vlo2ojdXzDb2d6roQyYTYpZK3l5flIJHURutqsxpQ/exec"; 
 
         const TRACK_COUNT = 4;
         let currentMessagesHash = ""; 
-        
-        // 記住「目前最新那筆的 row_index」（字串形式）
-        let latestRowIndex = null;
-        
-        // 用於判斷是否為首次載入 
         let isInitialLoad = true;
 
-        // 顯示狀態訊息的輔助函式
+        // 顯示 / 隱藏狀態訊息
         function showStatus(msg, isError = false) {
             const overlay = document.getElementById('status-overlay');
-            if (overlay) {
-                overlay.style.display = 'block';
-                overlay.innerHTML = msg;
-                overlay.style.color = isError ? '#A62323' : '#666';
-            }
+            if (!overlay) return;
+            overlay.style.display = 'block';
+            overlay.innerHTML = msg;
+            overlay.style.color = isError ? '#A62323' : '#666';
         }
+
         function hideStatus() {
             const overlay = document.getElementById('status-overlay');
             if (overlay) overlay.style.display = 'none';
         }
 
-        // --- 手機端 ---
+        // --- 手機端送出留言 ---
         function submitMessage() {
             const input = document.getElementById('userInput');
             const btn = document.getElementById('submitBtn');
@@ -221,7 +212,7 @@
                 });
         }
 
-        // --- 牆面端 ---
+        // --- 牆面端讀取留言 ---
         function updateWall() {
             if (isInitialLoad && !currentMessagesHash) {
                 showStatus("正在讀取資料...請稍候");
@@ -235,30 +226,12 @@
                 .then(data => {
                     hideStatus();
 
-                    // console.log("Data from server:", data);
-
-                    // ✅ 定義「最新那筆」＝陣列中最後一個元素
-                    if (data && data.length > 0) {
-                        const lastItem = data[data.length - 1];
-
-                        if (lastItem && typeof lastItem.row_index !== "undefined") {
-                            // 統一用字串來比較，避免型別不一致
-                            latestRowIndex = String(lastItem.row_index);
-                        } else {
-                            // 後端沒有 row_index，改用「位置」來判斷（reversedData[0]）
-                            latestRowIndex = null;
-                        }
-                    } else {
-                        latestRowIndex = null;
-                    }
-
-                    const newHash = JSON.stringify(data);
-                    
+                    const newHash = JSON.stringify(data || []);
                     if (newHash !== currentMessagesHash) {
                         currentMessagesHash = newHash;
-                        renderMarquee(data);
+                        renderMarquee(data || []);
                     }
-                    
+
                     isInitialLoad = false;
                 })
                 .catch(error => {
@@ -267,91 +240,94 @@
                 });
         }
 
+        // 排序資料：讓 orderedData[0] 一定是「最新的一筆」
+        function getOrderedData(data) {
+            if (!data || data.length <= 1) return data || [];
+
+            // 把 row_index 轉成數字（無法轉換的就略過）
+            const firstIdx = Number(data[0].row_index);
+            const lastIdx  = Number(data[data.length - 1].row_index);
+
+            // 如果 row_index 都是有效數字，就用它判斷排序方向
+            if (Number.isFinite(firstIdx) && Number.isFinite(lastIdx)) {
+                const ascending = firstIdx < lastIdx; // 舊→新？
+                // 若是舊→新（1,2,3,...）→ 反轉讓最新在前面
+                return ascending ? [...data].reverse() : data;
+            }
+
+            // 無法判斷，就保守假設「最後一筆是最新」，移到最前面
+            const copied = [...data];
+            const lastItem = copied.pop();
+            if (lastItem) copied.unshift(lastItem);
+            return copied;
+        }
+
         function renderMarquee(data) {
             const wallContainer = document.getElementById('wallContainer');
-            
-            // 自動修復：如果軌道不見了，重新建立
-            if (wallContainer.querySelectorAll('.marquee-track').length < TRACK_COUNT) {
-                wallContainer.innerHTML = '';
-                for (let i = 0; i < TRACK_COUNT; i++) {
-                    const track = document.createElement('div');
-                    track.className = 'marquee-track';
-                    track.id = `track-${i}`;
-                    wallContainer.appendChild(track);
-                }
-            }
+            if (!wallContainer) return;
 
-            const tracks = [];
-            for (let i = 0; i < TRACK_COUNT; i++) {
-                tracks.push(document.getElementById(`track-${i}`));
-            }
-
-            // 檢查資料
+            // 若無有效文字
             if (!data || data.length === 0 || data.every(item => !item.text)) {
                 showStatus("❌ 目前沒有留言資料，請從手機端輸入內容", true);
-                tracks.forEach(track => track.innerHTML = '');
+                wallContainer.innerHTML = '';
                 return;
             }
 
-            // 清空舊內容
-            tracks.forEach(track => track.innerHTML = '');
+            // 讓 orderedData[0] 一定代表「最新留言」
+            const orderedData = getOrderedData(data);
 
-            // 準備內容
-            const contentBlocks = tracks.map(() => document.createElement('div'));
-            contentBlocks.forEach(block => block.className = 'marquee-content');
-            
-            // 反轉資料 (最新在最前)
-            const reversedData = [...data].reverse();
-            
-            reversedData.forEach((item, index) => {
-                if (!item.text) return; 
-                
+            // 清空並重建軌道
+            wallContainer.innerHTML = '';
+            const tracks = [];
+            for (let i = 0; i < TRACK_COUNT; i++) {
+                const track = document.createElement('div');
+                track.className = 'marquee-track';
+                track.id = `track-${i}`;
+                wallContainer.appendChild(track);
+                tracks.push(track);
+            }
+
+            // 每個軌道上的內容容器
+            const contentBlocks = tracks.map(() => {
+                const block = document.createElement('div');
+                block.className = 'marquee-content';
+                return block;
+            });
+
+            // 依序建立項目
+            orderedData.forEach((item, index) => {
+                if (!item.text) return;
+
                 const span = document.createElement('span');
                 span.className = 'marquee-item';
-                span.innerText = item.text; 
-                
-                // 統一把 row_index 轉成字串來比較
-                const itemRowIndex =
-                    typeof item.row_index === "undefined" || item.row_index === null
-                        ? null
-                        : String(item.row_index);
+                span.innerText = item.text;
 
-                // 情況 A：後端有 row_index → 用 row_index 比較
-                const isLatestByRowIndex =
-                    latestRowIndex !== null &&
-                    itemRowIndex !== null &&
-                    itemRowIndex === latestRowIndex;
-
-                // 情況 B：後端沒有 row_index → 用 reversedData[0] 當最新
-                const isLatestByPosition =
-                    latestRowIndex === null && index === 0;
-
-                if (isLatestByRowIndex || isLatestByPosition) {
+                // ✅ orderedData[0] = 最新留言 → 綠色
+                if (index === 0) {
                     span.classList.add('is-latest');
-                    // console.log("標記最新留言：", item.text, "row_index =", item.row_index);
+                    span.style.color = '#2E7D63'; // 再保險一次 inline
                 }
-                
-                const trackIndex = index % TRACK_COUNT; 
+
+                const trackIndex = index % TRACK_COUNT;
                 contentBlocks[trackIndex].appendChild(span);
             });
 
-            // 填入軌道並複製以循環
+            // 填入軌道並複製內容，讓跑馬燈夠長
             tracks.forEach((track, i) => {
                 const content = contentBlocks[i];
                 if (content.innerHTML) {
-                    content.innerHTML += content.innerHTML; // x2
-                    content.innerHTML += content.innerHTML; // x4 (確保夠長)
+                    content.innerHTML += content.innerHTML;
+                    content.innerHTML += content.innerHTML;
                 }
                 track.appendChild(content);
             });
         }
 
-        // 啟動邏輯
+        // 啟動牆面輪詢（只在桌機版）
         window.addEventListener('DOMContentLoaded', () => {
             if (window.innerWidth > 768) {
                 updateWall();
-                // 每 3 秒靜默更新
-                setInterval(updateWall, 3000); 
+                setInterval(updateWall, 3000);
             }
         });
     </script>
