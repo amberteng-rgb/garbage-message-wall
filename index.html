@@ -172,10 +172,10 @@
         const TRACK_COUNT = 4;
         let currentMessagesHash = ""; 
         
-        // V5.3 新增：儲存已經顯示過的留言ID (row_index)
-        let displayedItemIds = new Set(); 
+        // V5.5 新增：儲存目前最高 ID 的留言，用於判斷誰應該是綠色
+        let highestRowIndex = 0;
         
-        // V5.3 新增：用於判斷是否為首次載入 (首次載入時所有留言都當作是「新留言」)
+        // V5.3 新增：用於判斷是否為首次載入 
         let isInitialLoad = true;
 
         // 顯示狀態訊息的輔助函式
@@ -228,6 +228,15 @@
                 })
                 .then(data => {
                     hideStatus();
+                    
+                    // V5.5 邏輯：更新目前最高的 ID
+                    if (data && data.length > 0) {
+                        const currentMaxId = Math.max(...data.map(item => item.row_index).filter(id => id));
+                        if (currentMaxId > 0) {
+                             highestRowIndex = currentMaxId;
+                        }
+                    }
+
                     const newHash = JSON.stringify(data);
                     
                     if (newHash !== currentMessagesHash) {
@@ -247,23 +256,6 @@
         function renderMarquee(data) {
             const wallContainer = document.getElementById('wallContainer');
             
-            // 獲取本次更新的所有留言 ID
-            const incomingItemIds = new Set(data.map(item => item.row_index).filter(id => id));
-
-            // V5.3 核心邏輯：判斷哪些是新留言
-            const newlyAddedIds = new Set();
-            if (!isInitialLoad) {
-                incomingItemIds.forEach(id => {
-                    if (!displayedItemIds.has(id)) {
-                        newlyAddedIds.add(id);
-                    }
-                });
-            }
-
-            // 更新已顯示的 ID 列表
-            displayedItemIds = incomingItemIds;
-
-
             // 自動修復：如果軌道不見了，重新建立
             if (wallContainer.querySelectorAll('.marquee-track').length < TRACK_COUNT) {
                 wallContainer.innerHTML = '';
@@ -294,6 +286,7 @@
             const contentBlocks = tracks.map(() => document.createElement('div'));
             contentBlocks.forEach(block => block.className = 'marquee-content');
             
+            // 反轉資料 (最新在最前)
             const reversedData = [...data].reverse();
             
             reversedData.forEach((item, index) => {
@@ -305,9 +298,9 @@
                 span.innerText = item.text; 
                 span.style.fontSize = '2.2rem'; 
                 
-                // V5.4 變色修正：直接使用 HEX 色碼 #2E7D63 (綠色)
-                const isNew = isInitialLoad || newlyAddedIds.has(item.row_index);
-                span.style.color = isNew ? '#2E7D63' : '#444444'; 
+                // V5.5 變色邏輯：若該留言 ID 等於目前最高 ID，則保持綠色
+                const isLatest = (item.row_index && item.row_index === highestRowIndex);
+                span.style.color = isLatest ? '#2E7D63' : '#444444'; 
                 
                 const trackIndex = index % TRACK_COUNT; 
                 contentBlocks[trackIndex].appendChild(span);
