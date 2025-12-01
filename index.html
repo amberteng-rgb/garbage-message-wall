@@ -49,14 +49,13 @@
         /* --- 跑馬燈核心樣式 --- */
         .message-wall {
             width: 100%; 
-            height: 50vh; 
+            height: 60vh; /* 拉高高度 */
             overflow: hidden; 
             position: absolute; 
             top: 25%; 
-            transform: translateY(-25%);
             display: flex;
             flex-direction: column; 
-            justify-content: space-around; 
+            justify-content: space-evenly; /* 平均分配 */
         }
         
         /* 單獨的跑馬燈軌道 */
@@ -64,8 +63,8 @@
             width: 100%;
             display: flex; 
             align-items: center;
-            height: calc(50vh / 4); 
-            box-sizing: content-box;
+            height: 15%; /* 每一軌的高度 */
+            position: relative;
         }
 
         /* 跑馬燈內容 */
@@ -75,6 +74,7 @@
             animation-duration: 60s; 
             animation-timing-function: linear;
             animation-iteration-count: infinite;
+            position: absolute; /* 絕對定位確保不被擠壓 */
         }
         
         /* 不同的軌道給予不同的動畫時間 */
@@ -83,7 +83,233 @@
         #track-2 .marquee-content { animation-name: marquee-2; animation-duration: 90s; }
         #track-3 .marquee-content { animation-name: marquee-3; animation-duration: 65s; }
 
+        @keyframes marquee-0 { 0% { left: 100%; transform: translateX(0); } 100% { left: 0%; transform: translateX(-100%); } }
+        @keyframes marquee-1 { 0% { left: 100%; transform: translateX(0); } 100% { left: 0%; transform: translateX(-100%); } }
+        @keyframes marquee-2 { 0% { left: 100%; transform: translateX(0); } 100% { left: 0%; transform: translateX(-100%); } }
+        @keyframes marquee-3 { 0% { left: 100%; transform: translateX(0); } 100% { left: 0%; transform: translateX(-100%); } }
 
-        @keyframes marquee-0 { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-        @keyframes marquee-1 { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-        @keyframes marquee-2 { 0% { transform: translateX(100%); } 100
+        /* 跑馬燈單一項目 */
+        .marquee-item {
+            display: inline-block;
+            padding: 0 60px; 
+            font-weight: 900;
+            transition: color 0.3s;
+            line-height: 1.2;
+        }
+
+        /* 狀態訊息浮層 (Loading / Error) */
+        #status-overlay {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            color: #666;
+            background: rgba(255,255,255,0.9);
+            padding: 20px 40px;
+            border-radius: 10px;
+            z-index: 100;
+            display: none; /* 預設隱藏 */
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Footer */
+        .footer { position: absolute; bottom: 0; width: 100%; background: white; padding: 10px; text-align: center; font-size: 0.75rem; color: #888; }
+
+        /* RWD 強制設定 */
+        @media (max-width: 768px) { 
+            #mobile-input-view { display: block !important; } 
+            #desktop-wall-view { display: none !important; }
+            .curve-1 { right: -50vw; top: -20vw; } 
+        }
+        @media (min-width: 769px) { 
+            #desktop-wall-view { display: block !important; } 
+            #mobile-input-view { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="gold-curve curve-1"></div>
+    <div class="gold-curve curve-2"></div>
+
+    <div class="container">
+        <div id="mobile-input-view">
+            <div class="header-logo">
+                <h1>垃圾減量大作戰！</h1> 
+            </div>
+            <br>
+            <div class="input-card">
+                <div class="instruction">
+                    <strong>STEP 1</strong><br>
+                    依照你生活中的日常經驗，分享一個「能幫助垃圾減量的方法」。
+                </div>
+                <textarea id="userInput" placeholder="例如：使用環保杯..."></textarea>
+                <button id="submitBtn" onclick="submitMessage()">送出行動</button>
+            </div>
+        </div>
+
+        <div id="desktop-wall-view">
+            <div class="header-logo">
+                <h1>垃圾減量大作戰！</h1>
+            </div>
+            <div class="wall-header">
+                <div class="impact-text">每一個行動改變 > 成就巨大的影響力</div>
+            </div>
+            
+            <div id="status-overlay">初始化中...</div>
+
+            <div class="message-wall" id="wallContainer">
+                <div class="marquee-track" id="track-0"></div>
+                <div class="marquee-track" id="track-1"></div>
+                <div class="marquee-track" id="track-2"></div>
+                <div class="marquee-track" id="track-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">主辦單位：隆中向上教育基金會 | 贊助單位：XSGames GameSparcs</div>
+
+    <script>
+        // ✅ 您的 Google Apps Script 網址
+        const scriptURL = "https://script.google.com/macros/s/AKfycbwYvDeDEBDKuoJQymeWb8kNyByK2vlo2ojdXzDb2d6roQyYTYpZK3l5flIJHURutqsxpQ/exec"; 
+
+        const randomTextColors = ['#A62323', '#2E7D63', '#444444', '#6C757D', '#8D6A00', '#1E3A5F', '#5A2D54'];
+        const TRACK_COUNT = 4;
+        let currentMessagesHash = ""; 
+
+        // 顯示狀態訊息的輔助函式
+        function showStatus(msg, isError = false) {
+            const overlay = document.getElementById('status-overlay');
+            if (overlay) {
+                overlay.style.display = 'block';
+                overlay.innerHTML = msg;
+                overlay.style.color = isError ? '#A62323' : '#666';
+            }
+        }
+        function hideStatus() {
+            const overlay = document.getElementById('status-overlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        // --- 手機端 ---
+        function submitMessage() {
+            const input = document.getElementById('userInput');
+            const btn = document.getElementById('submitBtn');
+            const text = input.value.trim();
+            if (!text) { alert("請輸入內容！"); return; }
+            btn.disabled = true;
+            btn.innerText = "傳送中...";
+            fetch(`${scriptURL}?action=insert&text=${encodeURIComponent(text)}`)
+                .then(() => {
+                    alert("感謝您的響應！訊息已上牆。");
+                    input.value = "";
+                    btn.disabled = false;
+                    btn.innerText = "送出行動";
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("發送失敗，請檢查網路。");
+                    btn.disabled = false;
+                    btn.innerText = "重試";
+                });
+        }
+
+        // --- 牆面端 ---
+        function updateWall() {
+            // 如果是第一次載入，顯示讀取中
+            if (!currentMessagesHash) {
+                showStatus("正在讀取資料...請稍候");
+            }
+
+            fetch(`${scriptURL}?action=read`)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    hideStatus(); // 成功讀取，隱藏狀態
+                    const newHash = JSON.stringify(data);
+                    if (newHash !== currentMessagesHash) {
+                        currentMessagesHash = newHash;
+                        renderMarquee(data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch Error:', error);
+                    showStatus("⚠️ 讀取失敗！請檢查 Apps Script 權限或網址", true);
+                });
+        }
+
+        function renderMarquee(data) {
+            const wallContainer = document.getElementById('wallContainer');
+            
+            // 自動修復：如果軌道不見了，重新建立
+            if (wallContainer.querySelectorAll('.marquee-track').length < TRACK_COUNT) {
+                wallContainer.innerHTML = '';
+                for (let i = 0; i < TRACK_COUNT; i++) {
+                    const track = document.createElement('div');
+                    track.className = 'marquee-track';
+                    track.id = `track-${i}`;
+                    wallContainer.appendChild(track);
+                }
+            }
+
+            const tracks = [];
+            for (let i = 0; i < TRACK_COUNT; i++) {
+                tracks.push(document.getElementById(`track-${i}`));
+            }
+
+            // 檢查資料
+            if (!data || data.length === 0 || data.every(item => !item.text)) {
+                showStatus("❌ 目前沒有留言資料，請從手機端輸入內容", true);
+                return;
+            }
+
+            // 清空舊內容
+            tracks.forEach(track => track.innerHTML = '');
+
+            // 準備內容
+            const contentBlocks = tracks.map(() => document.createElement('div'));
+            contentBlocks.forEach(block => block.className = 'marquee-content');
+            
+            const reversedData = [...data].reverse();
+            
+            reversedData.forEach((item, index) => {
+                if (!item.text) return; 
+                
+                const span = document.createElement('span');
+                span.className = 'marquee-item';
+                span.innerText = item.text + " ⭐ "; 
+                
+                const randomColor = randomTextColors[Math.floor(Math.random() * randomTextColors.length)];
+                const randomSize = (1.8 + Math.random() * 1.2) + 'rem'; 
+                
+                span.style.color = randomColor;
+                span.style.fontSize = randomSize;
+                
+                const trackIndex = index % TRACK_COUNT; 
+                contentBlocks[trackIndex].appendChild(span);
+            });
+
+            // 填入軌道並複製以循環
+            tracks.forEach((track, i) => {
+                const content = contentBlocks[i];
+                if (content.innerHTML) {
+                    content.innerHTML += content.innerHTML; // x2
+                    content.innerHTML += content.innerHTML; // x4 (確保夠長)
+                }
+                track.appendChild(content);
+            });
+        }
+
+        // 啟動邏輯
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.innerWidth > 768) {
+                updateWall();
+                setInterval(updateWall, 3000);
+            }
+        });
+    </script>
+</body>
+</html>
