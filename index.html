@@ -229,10 +229,14 @@
                 .then(data => {
                     hideStatus();
                     
-                    // V5.5 邏輯：更新目前最高的 ID
+                    // V5.6 修正：確保 ID 被解析為數字後再進行比較
                     if (data && data.length > 0) {
-                        const currentMaxId = Math.max(...data.map(item => item.row_index).filter(id => id));
-                        if (currentMaxId > 0) {
+                        // 篩選出所有有效的 row_index，並強制轉換為數字
+                        const validIds = data.map(item => Number(item.row_index)).filter(id => !isNaN(id) && id > 0);
+                        
+                        if (validIds.length > 0) {
+                             // 找出最大的數字 ID
+                             const currentMaxId = Math.max(...validIds);
                              highestRowIndex = currentMaxId;
                         }
                     }
@@ -298,8 +302,11 @@
                 span.innerText = item.text; 
                 span.style.fontSize = '2.2rem'; 
                 
-                // V5.5 變色邏輯：若該留言 ID 等於目前最高 ID，則保持綠色
-                const isLatest = (item.row_index && item.row_index === highestRowIndex);
+                // V5.6 修正：確保 item.row_index 被轉換成數字後再與 highestRowIndex 比較
+                const itemRowIndexNumber = Number(item.row_index);
+                const isLatest = (itemRowIndexNumber && itemRowIndexNumber === highestRowIndex);
+                
+                // 變色邏輯：若該留言 ID 等於目前最高 ID，則保持綠色
                 span.style.color = isLatest ? '#2E7D63' : '#444444'; 
                 
                 const trackIndex = index % TRACK_COUNT; 
