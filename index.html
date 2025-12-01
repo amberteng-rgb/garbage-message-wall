@@ -94,6 +94,13 @@
             padding: 0 15px; 
             font-weight: 900;
             line-height: 1.2;
+            font-size: 2.2rem; /* 固定字體大小 */
+            color: #444444; /* 預設灰色 */
+        }
+        
+        /* V5.7: 新增強制綠色類別 */
+        .is-latest {
+            color: var(--primary-green) !important; /* 使用 !important 強制覆蓋 */
         }
 
         /* 狀態訊息浮層 (Loading / Error) */
@@ -297,17 +304,20 @@
                 if (!item.text) return; 
                 
                 const span = document.createElement('span');
+                
+                // V5.7: 只設定基本類別，將顏色邏輯留給 classList
                 span.className = 'marquee-item';
                 
                 span.innerText = item.text; 
-                span.style.fontSize = '2.2rem'; 
                 
                 // V5.6 修正：確保 item.row_index 被轉換成數字後再與 highestRowIndex 比較
                 const itemRowIndexNumber = Number(item.row_index);
                 const isLatest = (itemRowIndexNumber && itemRowIndexNumber === highestRowIndex);
                 
-                // 變色邏輯：若該留言 ID 等於目前最高 ID，則保持綠色
-                span.style.color = isLatest ? '#2E7D63' : '#444444'; 
+                // V5.7 顏色邏輯：如果是最新的，則添加 is-latest 類別
+                if (isLatest) {
+                    span.classList.add('is-latest');
+                }
                 
                 const trackIndex = index % TRACK_COUNT; 
                 contentBlocks[trackIndex].appendChild(span);
