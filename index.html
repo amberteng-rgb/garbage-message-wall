@@ -10,7 +10,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;500;700;900&display=swap');
         :root {
             --primary-red: #A62323;
-            --primary-green: #2E7D63;
+            --primary-green: #2E7D63; /* 新留言使用的綠色 */
             --accent-gold: #D4AF37;
             --bg-gradient: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
         }
@@ -91,7 +91,7 @@
         /* 跑馬燈單一項目 (間距縮小) */
         .marquee-item {
             display: inline-block;
-            padding: 0 15px; /* V5.2: 進一步縮小間距，讓留言更密集 */
+            padding: 0 15px; 
             font-weight: 900;
             line-height: 1.2;
         }
@@ -171,6 +171,12 @@
 
         const TRACK_COUNT = 4;
         let currentMessagesHash = ""; 
+        
+        // V5.3 新增：儲存已經顯示過的留言ID (row_index)
+        let displayedItemIds = new Set(); 
+        
+        // V5.3 新增：用於判斷是否為首次載入 (首次載入時所有留言都當作是「新留言」)
+        let isInitialLoad = true;
 
         // 顯示狀態訊息的輔助函式
         function showStatus(msg, isError = false) {
@@ -211,7 +217,7 @@
 
         // --- 牆面端 ---
         function updateWall() {
-            if (!currentMessagesHash) {
+            if (isInitialLoad && !currentMessagesHash) {
                 showStatus("正在讀取資料...請稍候");
             }
 
@@ -223,10 +229,14 @@
                 .then(data => {
                     hideStatus();
                     const newHash = JSON.stringify(data);
+                    
                     if (newHash !== currentMessagesHash) {
                         currentMessagesHash = newHash;
                         renderMarquee(data);
                     }
+                    
+                    // 標記為已非首次載入
+                    isInitialLoad = false;
                 })
                 .catch(error => {
                     console.error('Fetch Error:', error);
@@ -237,6 +247,23 @@
         function renderMarquee(data) {
             const wallContainer = document.getElementById('wallContainer');
             
+            // 獲取本次更新的所有留言 ID
+            const incomingItemIds = new Set(data.map(item => item.row_index).filter(id => id));
+
+            // V5.3 核心邏輯：判斷哪些是新留言
+            const newlyAddedIds = new Set();
+            if (!isInitialLoad) {
+                incomingItemIds.forEach(id => {
+                    if (!displayedItemIds.has(id)) {
+                        newlyAddedIds.add(id);
+                    }
+                });
+            }
+
+            // 更新已顯示的 ID 列表
+            displayedItemIds = incomingItemIds;
+
+
             // 自動修復：如果軌道不見了，重新建立
             if (wallContainer.querySelectorAll('.marquee-track').length < TRACK_COUNT) {
                 wallContainer.innerHTML = '';
@@ -256,7 +283,6 @@
             // 檢查資料
             if (!data || data.length === 0 || data.every(item => !item.text)) {
                 showStatus("❌ 目前沒有留言資料，請從手機端輸入內容", true);
-                // 必須清除跑馬燈內容
                 tracks.forEach(track => track.innerHTML = '');
                 return;
             }
@@ -276,10 +302,12 @@
                 const span = document.createElement('span');
                 span.className = 'marquee-item';
                 
-                // 統一設置 (V5.1 變更)
                 span.innerText = item.text; 
-                span.style.color = '#444444'; 
                 span.style.fontSize = '2.2rem'; 
+                
+                // V5.3 變色邏輯：新留言是綠色，舊留言是灰色
+                const isNew = isInitialLoad || newlyAddedIds.has(item.row_index);
+                span.style.color = isNew ? 'var(--primary-green)' : '#444444'; 
                 
                 const trackIndex = index % TRACK_COUNT; 
                 contentBlocks[trackIndex].appendChild(span);
@@ -300,7 +328,7 @@
         window.addEventListener('DOMContentLoaded', () => {
             if (window.innerWidth > 768) {
                 updateWall();
-                // 靜默更新，避免重刷畫面導致跑馬燈跳動
+                // 每 3 秒靜默更新
                 setInterval(updateWall, 3000); 
             }
         });
