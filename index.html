@@ -91,7 +91,7 @@
         /* 跑馬燈單一項目 (間距縮小) */
         .marquee-item {
             display: inline-block;
-            padding: 0 30px; /* 從 60px 縮小為 30px */
+            padding: 0 15px; /* V5.2: 進一步縮小間距，讓留言更密集 */
             font-weight: 900;
             line-height: 1.2;
         }
@@ -112,9 +112,8 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
-        /* Footer */
-        .footer { position: absolute; bottom: 0; width: 100%; background: white; padding: 10px; text-align: center; font-size: 0.75rem; color: #888; }
-
+        /* Footer (已移除) */
+        
         /* RWD 強制設定 */
         @media (max-width: 768px) { 
             #mobile-input-view { display: block !important; } 
@@ -166,14 +165,10 @@
             </div>
         </div>
     </div>
-
-    <div class="footer">主辦單位：隆中向上教育基金會 | 贊助單位：XSGames GameSparcs</div>
-
     <script>
         // ✅ 您的 Google Apps Script 網址
         const scriptURL = "https://script.google.com/macros/s/AKfycbwYvDeDEBDKuoJQymeWb8kNyByK2vlo2ojdXzDb2d6roQyYTYpZK3l5flIJHURutqsxpQ/exec"; 
 
-        // 移除隨機顏色陣列，現在只會使用統一的顏色
         const TRACK_COUNT = 4;
         let currentMessagesHash = ""; 
 
@@ -281,14 +276,10 @@
                 const span = document.createElement('span');
                 span.className = 'marquee-item';
                 
-                // 1. 拿掉星星符號
+                // 統一設置 (V5.1 變更)
                 span.innerText = item.text; 
-                
-                // 3. 統一回覆字體用色
-                span.style.color = '#444444'; // 統一使用深灰色
-                
-                // 4. 統一回覆字體大小
-                span.style.fontSize = '2.2rem'; // 統一使用 2.2rem
+                span.style.color = '#444444'; 
+                span.style.fontSize = '2.2rem'; 
                 
                 const trackIndex = index % TRACK_COUNT; 
                 contentBlocks[trackIndex].appendChild(span);
