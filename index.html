@@ -305,9 +305,9 @@
                 span.innerText = item.text; 
                 span.style.fontSize = '2.2rem'; 
                 
-                // V5.3 變色邏輯：新留言是綠色，舊留言是灰色
+                // V5.4 變色修正：直接使用 HEX 色碼 #2E7D63 (綠色)
                 const isNew = isInitialLoad || newlyAddedIds.has(item.row_index);
-                span.style.color = isNew ? 'var(--primary-green)' : '#444444'; 
+                span.style.color = isNew ? '#2E7D63' : '#444444'; 
                 
                 const trackIndex = index % TRACK_COUNT; 
                 contentBlocks[trackIndex].appendChild(span);
