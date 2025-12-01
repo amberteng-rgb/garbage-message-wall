@@ -116,7 +116,7 @@
         
         @media (max-width: 768px) { 
             #mobile-input-view { display: block !important; } 
-            #desktop-wall-view { display: none !important; }
+            #desktop-wall-view { display: none !重要; }
             .curve-1 { right: -50vw; top: -20vw; } 
         }
         @media (min-width: 769px) { 
@@ -226,10 +226,11 @@
                 .then(data => {
                     hideStatus();
 
-                    const newHash = JSON.stringify(data || []);
+                    const list = Array.isArray(data) ? data : [];
+                    const newHash = JSON.stringify(list);
                     if (newHash !== currentMessagesHash) {
                         currentMessagesHash = newHash;
-                        renderMarquee(data || []);
+                        renderMarquee(list);
                     }
 
                     isInitialLoad = false;
@@ -238,28 +239,6 @@
                     console.error('Fetch Error:', error);
                     showStatus("⚠️ 讀取失敗！請檢查 Apps Script 權限或網址", true);
                 });
-        }
-
-        // 排序資料：讓 orderedData[0] 一定是「最新的一筆」
-        function getOrderedData(data) {
-            if (!data || data.length <= 1) return data || [];
-
-            // 把 row_index 轉成數字（無法轉換的就略過）
-            const firstIdx = Number(data[0].row_index);
-            const lastIdx  = Number(data[data.length - 1].row_index);
-
-            // 如果 row_index 都是有效數字，就用它判斷排序方向
-            if (Number.isFinite(firstIdx) && Number.isFinite(lastIdx)) {
-                const ascending = firstIdx < lastIdx; // 舊→新？
-                // 若是舊→新（1,2,3,...）→ 反轉讓最新在前面
-                return ascending ? [...data].reverse() : data;
-            }
-
-            // 無法判斷，就保守假設「最後一筆是最新」，移到最前面
-            const copied = [...data];
-            const lastItem = copied.pop();
-            if (lastItem) copied.unshift(lastItem);
-            return copied;
         }
 
         function renderMarquee(data) {
@@ -273,8 +252,10 @@
                 return;
             }
 
-            // 讓 orderedData[0] 一定代表「最新留言」
-            const orderedData = getOrderedData(data);
+            // ⚠️ 重要假設：
+            // Apps Script 回傳：data[0] = 最新、data[data.length - 1] = 最舊
+            // 所以這裡「完全不反轉」，直接把 data[0] 當最新
+            const orderedData = data; // 最新 → 最舊
 
             // 清空並重建軌道
             wallContainer.innerHTML = '';
@@ -294,7 +275,7 @@
                 return block;
             });
 
-            // 依序建立項目
+            // 依序建立項目：index 0 = 最新，應該是綠色
             orderedData.forEach((item, index) => {
                 if (!item.text) return;
 
@@ -302,7 +283,7 @@
                 span.className = 'marquee-item';
                 span.innerText = item.text;
 
-                // ✅ orderedData[0] = 最新留言 → 綠色
+                // ✅ 第 0 筆一定是「最新留言」→ 綠色
                 if (index === 0) {
                     span.classList.add('is-latest');
                     span.style.color = '#2E7D63'; // 再保險一次 inline
