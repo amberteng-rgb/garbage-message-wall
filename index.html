@@ -49,13 +49,13 @@
         /* --- 跑馬燈核心樣式 --- */
         .message-wall {
             width: 100%; 
-            height: 60vh; /* 拉高高度 */
+            height: 60vh; 
             overflow: hidden; 
             position: absolute; 
             top: 25%; 
             display: flex;
             flex-direction: column; 
-            justify-content: space-evenly; /* 平均分配 */
+            justify-content: space-evenly; 
         }
         
         /* 單獨的跑馬燈軌道 */
@@ -63,7 +63,7 @@
             width: 100%;
             display: flex; 
             align-items: center;
-            height: 15%; /* 每一軌的高度 */
+            height: 15%; 
             position: relative;
         }
 
@@ -74,7 +74,7 @@
             animation-duration: 60s; 
             animation-timing-function: linear;
             animation-iteration-count: infinite;
-            position: absolute; /* 絕對定位確保不被擠壓 */
+            position: absolute; 
         }
         
         /* 不同的軌道給予不同的動畫時間 */
@@ -88,13 +88,13 @@
         @keyframes marquee-2 { 0% { left: 100%; transform: translateX(0); } 100% { left: 0%; transform: translateX(-100%); } }
         @keyframes marquee-3 { 0% { left: 100%; transform: translateX(0); } 100% { left: 0%; transform: translateX(-100%); } }
 
-        /* 跑馬燈單一項目 (間距縮小) */
+        /* 跑馬燈單一項目 */
         .marquee-item {
             display: inline-block;
             padding: 0 15px; 
             font-weight: 900;
             line-height: 1.2;
-            font-size: 2.2rem; /* 固定字體大小 */
+            font-size: 2.2rem; 
             color: #444444; /* 預設灰色 */
         }
         
@@ -119,6 +119,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
+        /* RWD */
         @media (max-width: 768px) { 
             #mobile-input-view { display: block !important; } 
             #desktop-wall-view { display: none !important; }
@@ -136,7 +137,6 @@
     <div class="gold-curve curve-2"></div>
 
     <div class="container">
-        <!-- 手機端 -->
         <div id="mobile-input-view">
             <div class="header-logo">
                 <h1>垃圾減量大作戰！</h1> 
@@ -152,7 +152,6 @@
             </div>
         </div>
 
-        <!-- 牆面端 -->
         <div id="desktop-wall-view">
             <div class="header-logo">
                 <h1>垃圾減量大作戰！</h1>
@@ -248,7 +247,6 @@
                 });
         }
 
-        // 渲染跑馬燈：假設 Apps Script 回傳是「最新 → 最舊」
         function renderMarquee(data) {
             const wallContainer = document.getElementById('wallContainer');
             if (!wallContainer) return;
@@ -259,7 +257,8 @@
                 return;
             }
 
-            const orderedData = data; // 最新 → 最舊
+            // ⚠️ 關鍵修正：將資料「反轉」 (最新在 index 0)
+            const orderedData = [...data].reverse(); 
 
             // 清空並重建軌道
             wallContainer.innerHTML = '';
@@ -272,14 +271,13 @@
                 tracks.push(track);
             }
 
-            // 每個軌道上的內容容器
             const contentBlocks = tracks.map(() => {
                 const block = document.createElement('div');
                 block.className = 'marquee-content';
                 return block;
             });
 
-            // 建立項目：index 0 = 最新
+            // 建立項目：index 0 是最新的
             orderedData.forEach((item, index) => {
                 if (!item.text) return;
 
@@ -287,26 +285,31 @@
                 span.className = 'marquee-item';
                 span.innerText = item.text;
 
+                // 變色邏輯：最新的 (index 0) 變綠色，其餘灰色
                 if (index === 0) {
                     span.classList.add('is-latest');
-                    span.style.color = '#2E7D63'; // 再保險一次 inline
+                    span.style.color = '#2E7D63'; // 雙重保險
                 }
 
                 const trackIndex = index % TRACK_COUNT;
                 contentBlocks[trackIndex].appendChild(span);
             });
 
-            // ⭐ 跑馬燈間距縮短：只複製一次內容（原本是兩次）
+            // 放入軌道並複製
             tracks.forEach((track, i) => {
                 const content = contentBlocks[i];
                 if (content.innerHTML) {
-                    content.innerHTML += content.innerHTML; // 只複製一次 → 間距變緊
+                    content.innerHTML += content.innerHTML; // 複製第一次
+                    // 檢查內容長度，如果太短，再複製一次以避免斷層
+                    if (orderedData.length < 10) { 
+                         content.innerHTML += content.innerHTML; 
+                    }
                 }
                 track.appendChild(content);
             });
         }
 
-        // 啟動牆面輪詢（只在桌機）
+        // 啟動牆面輪詢
         window.addEventListener('DOMContentLoaded', () => {
             if (window.innerWidth > 768) {
                 updateWall();
